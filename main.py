@@ -1,5 +1,7 @@
+from flask import Flask, jsonify
+from livekit import api
+import os
 import asyncio
-
 from livekit.agents import AutoSubscribe, JobContext, WorkerOptions, cli, llm
 from livekit.agents.voice_assistant import VoiceAssistant
 from livekit.plugins import deepgram, openai, silero
@@ -40,6 +42,30 @@ async def entrypoint(ctx: JobContext):
     await assistant.say("Hey, how can I help you today?", allow_interruptions=True)
 
 
+app = Flask(__name__)
+
+@app.route('/api/get-participant-token', methods=['GET'])
+def get_participant_token():
+    room_name = 'your-room-name'  # You might want to generate this dynamically
+    participant_name = 'human_user'  # You might want to generate this dynamically
+
+    api_key = os.environ.get('LIVEKIT_API_KEY')
+    api_secret = os.environ.get('LIVEKIT_API_SECRET')
+    
+    if not api_key or not api_secret:
+        return jsonify({'error': 'Server misconfigured'}), 500
+
+    token = api.AccessToken(api_key, api_secret)
+    token.add_grant(room_name=room_name, participant_name=participant_name)
+
+    return jsonify({
+        'accessToken': token.to_jwt(),
+        'url': os.environ.get('LIVEKIT_URL')
+    })
+
 if __name__ == "__main__":
-    # Initialize the worker with the entrypoint
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+    # Run the Flask app
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8000)))
+
+    # Run the LiveKit agent
+    asyncio.run(entrypoint(JobContext()))  #

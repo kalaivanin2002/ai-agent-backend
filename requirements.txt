@@ -44,3 +44,4 @@ python-dotenv
 sniffio
 wheel==0.37.1
 setuptools==58.0.0
+flask==2.0.1
